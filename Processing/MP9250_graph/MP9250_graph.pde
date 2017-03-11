@@ -1,9 +1,4 @@
-import g4p_controls.*;
-import processing.serial.*;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
-import java.awt.*;
 
 // Global variables
 
@@ -30,13 +25,12 @@ public class ViewObject3D extends PApplet {
   private float rollCorrect   = 0;
   private float yawCorrect    = radians(-38);
   
- 
   public void setPosX(float p_posX){posX = p_posX;}
   public void setPosY(float p_posY){posY = p_posY;}
   public void setPosZ(float p_posZ){posZ = p_posZ;}
   
-  public void setPitch(float p_pitch){pitch = normalize(p_pitch) + pitchCorrect;} //<>// //<>// //<>// //<>//
-  public void setRoll(float p_roll)  {roll = normalize(p_roll) + rollCorrect;}
+  public void setPitch(float p_pitch){pitch = normalize(p_pitch) + pitchCorrect;} //<>// //<>// //<>// //<>// //<>// //<>//
+  public void setRoll(float p_roll)  {roll = normalize(p_roll) + rollCorrect;} //<>// //<>//
   public void setYaw(float p_yaw)    {yaw = normalize(p_yaw) + yawCorrect;}
   
 
@@ -224,6 +218,7 @@ void displayBox() {
     cx = cos(xx);
     cy = cos(yy);
     cz = cos(zz);
+    
     sx = sin(xx);
     sy = sin(yy);
     sz = sin(zz);

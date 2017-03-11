@@ -18,8 +18,8 @@ public class SecondApplet extends PApplet {
  
  
   private int i = 0; // variable that changes for point calculation
-  private int points = 350; // number of points to display at a time
-  private int totalPoints = 400; // number of points on x axis
+  private int points = 2000; // number of points to display at a time
+  private int totalPoints = 2200; // number of points on x axis
 
   private  GPlot plot;
   
@@ -35,12 +35,12 @@ public class SecondApplet extends PApplet {
   
   
   public void settings() {
-    size(800, 600); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
+    size(800, 600); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
   }
   
   
   public void setup() {
-      surface.setLocation(0,0); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
+      surface.setLocation(0,0); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
       surface.setAlwaysOnTop(true);
       surface.setAlwaysOnTop(false);
 
@@ -63,7 +63,7 @@ public class SecondApplet extends PApplet {
      
      // Set plot limit
      plot.setXLim(0,totalPoints);
-     plot.setYLim(-100000,100000);
+     plot.setYLim(-150000,150000);
   
     // Set the plot title and the axis labels
     plot.setTitleText("Plot");
@@ -73,15 +73,15 @@ public class SecondApplet extends PApplet {
   
     // Add the points and layers
     plot.addLayer("posX",pointsPosX);
-    plot.getLayer("posX").setPointColors(new int[] {color(0,0,204)});
+    plot.getLayer("posX").setPointColors(new int[] {color(255,0,0)});// RED
     plot.getLayer("posX").setPointSize(2);
  
     plot.addLayer("posY",pointsPosY);
-    plot.getLayer("posY").setPointColors(new int[] {color(0,204,0)});
+    plot.getLayer("posY").setPointColors(new int[] {color(0,255,0)}); //green
     plot.getLayer("posY").setPointSize(2);
 
     plot.addLayer("posZ",pointsPosZ);
-    plot.getLayer("posZ").setPointColors(new int[] {color(204,0,0)});
+    plot.getLayer("posZ").setPointColors(new int[] {color(0,0,255)}); //blue
     plot.getLayer("posZ").setPointSize(2);
 
 
@@ -95,7 +95,7 @@ public class SecondApplet extends PApplet {
     background(150);
     
     // draw the plot
-    plot.beginDraw(); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
+    plot.beginDraw(); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
     plot.drawBackground();
     plot.drawBox();
     plot.drawXAxis();
@@ -115,7 +115,7 @@ public class SecondApplet extends PApplet {
     else
       i++;
       
-      plot.addPoint(new GPoint(i,posX),plot.getLayer("posX").getId()); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
+      plot.addPoint(new GPoint(i,posX),plot.getLayer("posX").getId()); //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>// //<>//
       plot.removePoint(0,plot.getLayer("posX").getId());
       
       plot.addPoint(new GPoint(i,-posY),plot.getLayer("posY").getId());

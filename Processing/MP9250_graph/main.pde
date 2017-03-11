@@ -1,3 +1,10 @@
+import g4p_controls.*;
+import processing.serial.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import papaya.*;
+import java.awt.*;
+
 Serial serialPort;
 
 float deltaT   =  0.1; // secondes
@@ -15,18 +22,14 @@ float oldSpeedX = 0.0;
 float oldSpeedY = 0.0;
 float oldSpeedZ = 0.0;
 
-float accelX;
-float accelY;
-float accelZ;
+float[] accel , accelRotated,filteredAccel;
+float[][] shiftReg;
 
 float pitch;
 float yaw;
 float roll;
 
-// Transform
-
-float M00,M01,M02,M10,M11,M12,M20,M21,M22;
-                       
+// Transform                       
 float gravity[] = {0.0,0.0,0.0};
 
 boolean DEBUG = true;
@@ -35,16 +38,16 @@ int ARRAY_SIZE = 5;
 // 3D Reprensentation of the IMU
 ViewObject3D viewObject3D;
 SecondApplet plot;
-
+PrintWriter output;
 void setup() {
-  surface.setVisible(false); //<>// //<>// //<>//
+  surface.setVisible(false); //<>// //<>// //<>// //<>// //<>//
 
  // *********** Vue object 3D ************* 
   String[] args = {"3D View"};
   viewObject3D = new ViewObject3D();
   PApplet.runSketch(args, viewObject3D);
   
-  // ********** Plot window ***************
+  // ********** Plot window *************** //<>// //<>// //<>//
   String[] plotName = {"Plot"};
   plot = new SecondApplet();
   PApplet.runSketch(plotName,plot);
@@ -58,6 +61,12 @@ void setup() {
   serialPort.bufferUntil('\n');
   
   //********************************
+  output = createWriter("accel2.txt"); 
+  
+  accel         = new float[3];
+  accelRotated  = new float[3];
+  filteredAccel  = new float[3];
+  shiftReg = new float[3][3];
 }
 
 
@@ -65,42 +74,99 @@ void serialEvent(Serial p) {
 
   String part = p.readStringUntil('\n');
   if(part.length() == 36 ) {
-    String array[] = part.split("\t\t"); //<>// //<>// //<>//
-    if(array.length == 6) {
-       accelX = lowPassFilter(ByteBuffer.wrap(array[0].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,accelX);
-       accelY = lowPassFilter(ByteBuffer.wrap(array[1].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,accelY);
-       accelZ = ByteBuffer.wrap(array[2].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();
+    String array[] = part.split("\t\t"); //<>// //<>// //<>// //<>//
+    if(array.length == 6) { //<>// //<>//
+    //printFile(array);
+    // Write the coordinate to the file
+    accel[0] = ByteBuffer.wrap(array[0].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[0].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,accel[0]); //<>// //<>// //<>//
+    accel[1] = ByteBuffer.wrap(array[1].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[1].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,accel[1]); //<>// //<>// //<>//
+    accel[2] = ByteBuffer.wrap(array[2].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();
   
-       pitch  = lowPassFilter(ByteBuffer.wrap(array[3].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,pitch);
-       yaw    = lowPassFilter(ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,yaw); //<>// //<>// //<>//
-       roll   = lowPassFilter(ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,roll);
+    pitch  = ByteBuffer.wrap(array[3].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[3].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,pitch);
+    yaw    = ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,yaw); 
+    roll   = ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,roll);
+
+    float c1 = cos(yaw);
+    float s1 =  sin(yaw);
+    
+    float c2 = cos(pitch) ;
+    float s2 = sin(pitch) ;
+    
+    float c3 = cos(roll);
+    float s3 = sin(roll);
+   
+    
+    // YAW -> PITCH -> ROLL <=> Z -> Y -> X
+      float[][] rotation  = new float[][]  {{ c1 * c2   ,  c1 * s2 * s3 - c3 * s1  ,  s1* s3 + c1* c3 * s2  },
+                                          { c2 * s1     ,  c1 * c3 + s1 * s2 * s3  , c3 * s1 * s2 - c1 * s3     },
+                                          { -s2         ,  c2 * s3                 ,  c2 * c3  }};
 
 
-    // Rotation matrix
-    //gravity[0] =  -sin(pitch);
-    //gravity[1] =   cos(pitch) * sin(roll);
-    //gravity[2] =   cos(pitch) * cos(roll);
-    
-    gravity[0] = -cos(roll) * sin(pitch) * cos(yaw) + sin(roll) * sin(yaw);
-    gravity[1] =   cos(roll) * sin(pitch) * sin(yaw) + sin(roll) * cos(yaw);
-    gravity[2] =   cos(pitch) * cos(roll);
-    // P B
-    //A R
-    
-    // A pitch
-    // B roll
-    // C yaw
+   shiftReg[0][2] = shiftReg[0][1];
+   shiftReg[1][2] = shiftReg[0][1];
+   shiftReg[2][2] = shiftReg[0][1];
+   
+   shiftReg[0][1] = shiftReg[0][0];
+   shiftReg[1][1] = shiftReg[0][0];
+   shiftReg[2][1] = shiftReg[0][0];
+   
+   shiftReg[0][0] = accel[0] * rotation[0][0] + accel[1] * rotation[0][1] + accel[2] * rotation[0][2];   
+   shiftReg[1][0] = accel[0] * rotation[1][0] + accel[1] * rotation[1][1] + accel[2] * rotation[1][2];   
+   shiftReg[2][0] = accel[0] * rotation[2][0] + accel[1] * rotation[2][1] + accel[2] * rotation[2][2] - 1;   
+   
+   filteredAccel[0] = (-0.328581437337850946) * shiftReg[0][0] + (0.657162874675701891) * shiftReg[0][1] + (-0.328581437337850946) * shiftReg[0][2];
+   filteredAccel[1] = (-0.328581437337850946) * shiftReg[1][0] + (0.657162874675701891) * shiftReg[1][1] + (-0.328581437337850946) * shiftReg[1][2];
+   filteredAccel[2] = (-0.328581437337850946) * shiftReg[2][0] + (0.657162874675701891) * shiftReg[2][1] + (-0.328581437337850946) * shiftReg[2][2];
+   
+   
+    // // Rotation matrix
+    // //gravity[0] =  -sin(pitch);
+    // //gravity[1] =   cos(pitch) * sin(roll);
+    // //gravity[2] =   cos(pitch) * cos(roll);
+    // 
+    // //pitch yaw roll
+    // float   r00,r01,r02,
+    //         r10,r11,r12,
+    //         r20,r21,r22;
+    // 
+    // 
+    // r00 =  cos(yaw) * cos(pitch) - sin(yaw) * sin(roll) * sin(pitch);
+    // r01 = -sin(yaw) * cos(roll);
+    // r02 =  cos(yaw) * sin(pitch) + sin(yaw) * sin(roll) * cos(pitch);
+    // r10 =  sin(yaw) * cos(pitch) - sin(yaw) * sin(roll) * sin(pitch);
+    // r11 =  cos(yaw) * cos(roll);
+    // r12 =  sin(yaw) * sin(pitch) - cos(yaw) * sin(roll) * cos(pitch);
+    // r20 = -cos(roll) * sin(pitch);
+    // r21 =  sin(roll);
+    // r22 =  cos(roll) * cos(pitch);
+   
 
-    accelX = accelX - gravity[0];
-    accelY = accelY - gravity[1];
-    accelZ = accelZ - gravity[2];
-    
+
+    // gravity[0] = -cos(roll) * sin(pitch) * cos(yaw) + sin(roll) * sin(yaw);
+    // gravity[1] =   cos(roll) * sin(pitch) * sin(yaw) + sin(roll) * cos(yaw);
+    // gravity[2] =   cos(pitch) * cos(roll);
     }
   }
 
 }
 
-final float alpha = 0.1;
+void printFile(String array[])
+{
+    
+     output.println(
+       ByteBuffer.wrap(array[0].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       + " "
+       + ByteBuffer.wrap(array[1].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       + " " + 
+       ByteBuffer.wrap(array[2].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       //+ " " +
+       //ByteBuffer.wrap(array[3].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       //+ " " +
+       //ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       //+ " " +
+       //ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+     );
+}
 
 // **** Send data to views *****
   void draw() {
@@ -109,36 +175,34 @@ final float alpha = 0.1;
     setPitch(pitch);
     setYaw(yaw);
     setRoll(roll);
-    
-    // Compute gravity
-    // y p
-    // p y
-    // r p
-    // p r
-    // r y
-    // 
 
     // Remove gravity
    
-    oldSpeedX = getNewSpeed(oldSpeedX,accelX);
-    oldSpeedY = getNewSpeed(oldSpeedY,accelY);
-    oldSpeedZ = getNewSpeed(oldSpeedZ,accelZ);
+    //oldSpeedX = getNewSpeed(oldSpeedX,accel[0]);
+    //oldSpeedY = getNewSpeed(oldSpeedY,accel[1]);
+    //oldSpeedZ = getNewSpeed(oldSpeedZ,accel[2]);
     
-    posX = getNewPos(posX,oldSpeedX);
-    posY = getNewPos(posY,oldSpeedY);
-    posZ = getNewPos(posZ,oldSpeedZ);
+    //posX = getNewPos(posX,oldSpeedX);
+    //posY = getNewPos(posY,oldSpeedY);
+    //posZ = getNewPos(posZ,oldSpeedZ);
     
-    if (DEBUG) {
+    plot.setPosX(filteredAccel[0]*100000); //<>//
+    plot.setPosY(filteredAccel[1]*100000);
+    plot.setPosZ((filteredAccel[2])*100000);
+    
+    if (DEBUG) { //<>//
+      print (" yaw " + degrees(yaw) + " pitch " + degrees(pitch) + " roll " + degrees(roll)); 
       //print("p " + degrees(pitch) + " y " + degrees(yaw) + " r " + degrees(roll));
       //print (" posX " + posX + " posY " + posY + " posZ " + posZ); 
       //print( " speedX " + oldSpeedX + " speedY " + oldSpeedY + " speedZ " + oldSpeedZ);
-      //println( " gravity[0] " + gravity[0] + " gravity[1] " + gravity[1] + " gravity[2] " + gravity[2]);
-      println( " accelX     " + accelX     + " accelY     " + accelY     + " accelZ     " + accelZ);
-      //print( " X " + gravity[0] + " Y " + gravity[1] + " z " + gravity[2]);
-      println();
-    }
-      //<>// //<>// //<>//
-  }
+      //println( " gravity[0] " + gravity[0] + " gravity[1] " + gravity[1] + " gravity[2] " + gravity[2]); //<>//
+     // println( " accelX     " + accelX     + " accelY     " + accelY     + " accelZ     " + accelZ);
+     // println( " accelRX     " + accelXR     + " accelYR     " + accelYR     + " accelZR     " + accelZR);
+      //print( " X " + gravity[0] + " Y " + gravity[1] + " z " + gravity[2]); //<>//
+      println();                                                                          //<>//
+    }                                                                                    
+      //<>// //<>// //<>//                                                               
+  } //<>//
 
   public float removeTempError(float temp) {
     if(abs(temp) > DATA_FILTER_MIN_EDGE && abs(temp) < DATA_FILTER_MAX_EDGE) {
