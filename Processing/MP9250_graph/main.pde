@@ -29,6 +29,9 @@ float pitch;
 float yaw;
 float roll;
 
+float lat;
+float lng;
+
 // Transform                       
 float gravity[] = {0.0,0.0,0.0};
 
@@ -73,9 +76,9 @@ void setup() {
 void serialEvent(Serial p) {
 
   String part = p.readStringUntil('\n');
-  if(part.length() == 36 ) {
+  if(part.length() == 48 ) {
     String array[] = part.split("\t\t"); //<>// //<>// //<>// //<>//
-    if(array.length == 6) { //<>// //<>//
+    if(array.length == 8) { //<>// //<>//
     //printFile(array);
     // Write the coordinate to the file
     accel[0] = ByteBuffer.wrap(array[0].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[0].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,accel[0]); //<>// //<>// //<>//
@@ -86,6 +89,9 @@ void serialEvent(Serial p) {
     yaw    = ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,yaw); 
     roll   = ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();//lowPassFilter(ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat(),0.4,roll);
 
+    lat    = ByteBuffer.wrap(array[6].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();
+    lng    = ByteBuffer.wrap(array[7].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat();
+  
     float c1 = cos(yaw);
     float s1 =  sin(yaw);
     
@@ -100,7 +106,6 @@ void serialEvent(Serial p) {
       float[][] rotation  = new float[][]  {{ c1 * c2   ,  c1 * s2 * s3 - c3 * s1  ,  s1* s3 + c1* c3 * s2  },
                                           { c2 * s1     ,  c1 * c3 + s1 * s2 * s3  , c3 * s1 * s2 - c1 * s3     },
                                           { -s2         ,  c2 * s3                 ,  c2 * c3  }};
-
 
    shiftReg[0][2] = shiftReg[0][1];
    shiftReg[1][2] = shiftReg[0][1];
@@ -118,33 +123,9 @@ void serialEvent(Serial p) {
    filteredAccel[1] = (-0.328581437337850946) * shiftReg[1][0] + (0.657162874675701891) * shiftReg[1][1] + (-0.328581437337850946) * shiftReg[1][2];
    filteredAccel[2] = (-0.328581437337850946) * shiftReg[2][0] + (0.657162874675701891) * shiftReg[2][1] + (-0.328581437337850946) * shiftReg[2][2];
    
-   
-    // // Rotation matrix
-    // //gravity[0] =  -sin(pitch);
-    // //gravity[1] =   cos(pitch) * sin(roll);
-    // //gravity[2] =   cos(pitch) * cos(roll);
-    // 
-    // //pitch yaw roll
-    // float   r00,r01,r02,
-    //         r10,r11,r12,
-    //         r20,r21,r22;
-    // 
-    // 
-    // r00 =  cos(yaw) * cos(pitch) - sin(yaw) * sin(roll) * sin(pitch);
-    // r01 = -sin(yaw) * cos(roll);
-    // r02 =  cos(yaw) * sin(pitch) + sin(yaw) * sin(roll) * cos(pitch);
-    // r10 =  sin(yaw) * cos(pitch) - sin(yaw) * sin(roll) * sin(pitch);
-    // r11 =  cos(yaw) * cos(roll);
-    // r12 =  sin(yaw) * sin(pitch) - cos(yaw) * sin(roll) * cos(pitch);
-    // r20 = -cos(roll) * sin(pitch);
-    // r21 =  sin(roll);
-    // r22 =  cos(roll) * cos(pitch);
-   
-
-
-    // gravity[0] = -cos(roll) * sin(pitch) * cos(yaw) + sin(roll) * sin(yaw);
-    // gravity[1] =   cos(roll) * sin(pitch) * sin(yaw) + sin(roll) * cos(yaw);
-    // gravity[2] =   cos(pitch) * cos(roll);
+  
+  
+  
     }
   }
 
@@ -159,10 +140,10 @@ void printFile(String array[])
        + ByteBuffer.wrap(array[1].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
        + " " + 
        ByteBuffer.wrap(array[2].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
-       //+ " " +
-       //ByteBuffer.wrap(array[3].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
-       //+ " " +
-       //ByteBuffer.wrap(array[4].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       + " " +
+       ByteBuffer.wrap(array[6].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
+       + " " +
+       ByteBuffer.wrap(array[7].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
        //+ " " +
        //ByteBuffer.wrap(array[5].getBytes()).order(ByteOrder.LITTLE_ENDIAN).getFloat()
      );
@@ -192,6 +173,7 @@ void printFile(String array[])
     
     if (DEBUG) { //<>//
       print (" yaw " + degrees(yaw) + " pitch " + degrees(pitch) + " roll " + degrees(roll)); 
+      print(" latitude "+ lat + " longitude " + lng);
       //print("p " + degrees(pitch) + " y " + degrees(yaw) + " r " + degrees(roll));
       //print (" posX " + posX + " posY " + posY + " posZ " + posZ); 
       //print( " speedX " + oldSpeedX + " speedY " + oldSpeedY + " speedZ " + oldSpeedZ);
